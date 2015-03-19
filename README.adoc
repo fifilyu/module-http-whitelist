@@ -1,0 +1,3 @@
+# module-http-whitelist
+基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段，也就是域名白名单
+
