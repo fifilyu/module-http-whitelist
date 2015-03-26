@@ -33,7 +33,8 @@ $ sudo touch /etc/http_whitelist/host  /etc/http_whitelist/network
 
 ==== 域名白名单 /etc/http_whitelist/host
 
-白名单模块会放行
+此名单中域名可以被任意位置的用户访问。
+
 支持普通域名、无限子域名以及泛域名，每行一个，以回车符分割。
 
 .格式示例
