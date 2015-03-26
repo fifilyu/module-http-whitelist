@@ -17,7 +17,5 @@ int file_read(struct file* f, char** data, loff_t* len);
 int file_write(struct file* f, char* data, size_t len);
 // Write back data and metadata for @file to disk
 int file_sync(struct file* f);
-int read_list(const char* path, char** data, loff_t* len);
-int write_list(const char* path, char* data, loff_t len);
 
 #endif /* COMMON_FILE_H_ */

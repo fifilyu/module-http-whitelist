@@ -6,22 +6,25 @@
  */
 
 #include "issue.h"
+#include "common/domain.h"
 #include "common/file.h"
-#include "common/common.h"
+#include "common/host.h"
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include "common/misc.h"
 
 MODULE_LICENSE(LICENSE);
 MODULE_AUTHOR(AUTHOR);
 MODULE_DESCRIPTION(DESCRIPTION);
 
-static char* g_domains;
-static loff_t g_domains_len;
+static char* g_domains = NULL;
+static loff_t g_domains_len = 0;
 
-static char* g_hosts;
-static loff_t g_hosts_len;
+static char* g_nets = NULL;
+static loff_t g_nets_len = 0;
 
-static struct nf_hook_ops g_nf_hook;
+static wlist_ip_t* g_wlist_ips = NULL;
+static size_t g_wlist_ip_count = 0;
 
 unsigned int nf_hook_func(
         unsigned int hooknum,
@@ -62,9 +65,10 @@ unsigned int nf_hook_func(
 
     // 放行在白名单中的 IP 地址
     sprintf(request_ip_, "%pI4", &ip_header_->saddr);
-    ret_ = check_ip_wlist(request_ip_, g_hosts, g_hosts_len);
 
-    if (ret_ == 0)
+    // 如果是信任网络，直接放行。
+    // 如果本机作为转发网关，必须添加内网网段，内网网络才能访问公网
+    if (check_trust_net(request_ip_, g_wlist_ips, g_wlist_ip_count))
         return NF_ACCEPT;
 
     //    GET / HTTP/1.1\r\n
@@ -79,12 +83,10 @@ unsigned int nf_hook_func(
     if (ret_ < 0)
         return NF_ACCEPT;
 
-    ret_ = get_request_domain_pos(tcp_data_, &start_pos_, &request_domain_len_);
-
-    if (ret_ < 0)
+    if (!get_request_domain_pos(tcp_data_, &start_pos_, &request_domain_len_))
         return NF_DROP;
 
-    request_domain_ = (char*) kmalloc(request_domain_len_ + 1, GFP_ATOMIC);
+    request_domain_ = (char*) kmalloc(request_domain_len_ + NULL_BYTE_SIZE, GFP_ATOMIC);
     memcpy(request_domain_, start_pos_, request_domain_len_);
     request_domain_[request_domain_len_] = '\0';
 
@@ -97,29 +99,32 @@ unsigned int nf_hook_func(
     return NF_DROP;
 }
 
-int init_module() {
-    int ret_ = 0;
+static struct nf_hook_ops g_nf_hook = {
+        .hook = (nf_hookfn*) nf_hook_func,
+        .hooknum = NF_INET_PRE_ROUTING,
+        .pf = PF_INET,
+        .priority = NF_IP_PRI_FIRST
+};
 
+int init_module() {
     pr_info("Loading module \"%s\"\n", MODOUBLE_NAME);
 
-    ret_ = read_list(WL_DOMAINS, &g_domains, &g_domains_len);
+    // 读取 domains 配置 {
+    if (!read_domain_cfg(&g_domains, &g_domains_len))
+        return -1;
+    // }
 
-    if (ret_ < 0)
+    // 读取 hosts 配置 {
+    if (!read_host_cfg(&g_nets, &g_nets_len, &g_wlist_ip_count))
         return -1;
 
-    ret_ = read_list(WL_HOSTS, &g_hosts, &g_hosts_len);
+    g_wlist_ips = (wlist_ip_t*) kmalloc(g_wlist_ip_count * sizeof(wlist_ip_t), GFP_ATOMIC);
 
-    if (ret_ < 0)
+    if (!to_wlist_ip_array(g_nets, g_wlist_ips, g_wlist_ip_count))
         return -1;
+    // }
 
-    g_nf_hook.hook = (nf_hookfn*) nf_hook_func;
-    g_nf_hook.hooknum = NF_INET_PRE_ROUTING;
-    g_nf_hook.pf = PF_INET;
-    g_nf_hook.priority = NF_IP_PRI_FIRST;
-
-    ret_ = nf_register_hook(&g_nf_hook);
-
-    if (ret_ < 0)
+    if (nf_register_hook(&g_nf_hook) < 0)
         pr_err("Failed to load module \"%s\"\n", MODOUBLE_NAME);
 
     return 0;
@@ -127,6 +132,9 @@ int init_module() {
 
 void cleanup_module() {
     pr_info("Unloading module \"%s\"\n", MODOUBLE_NAME);
+    kfree(g_domains);
+    kfree(g_nets);
+    kfree(g_wlist_ips);
     nf_unregister_hook(&g_nf_hook);
 }
 

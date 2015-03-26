@@ -35,9 +35,8 @@ int file_read(struct file* f, char** data, loff_t* len) {
     struct inode *inode_;
     char* data_;
     loff_t len_;
-    int i_;
 
-    inode_ = f->f_dentry->d_inode;
+    inode_ = file_inode(f);
     *len = inode_->i_size;
     len_ = *len;
 
@@ -53,15 +52,6 @@ int file_read(struct file* f, char** data, loff_t* len) {
         return -1;
 
     data_[len_ - 1]='\0';
-
-    // 转换为 char 数组
-    // test.com\n*.abc.com\nabc.com\n
-    // ->
-    // test.com\0*.abc.com\0abc.com\0
-    for (i_ = 0; i_< len_;++i_) {
-        if (data_[i_] == '\n')
-            data_[i_] = '\0';
-    }
 
     return 0;
 }
