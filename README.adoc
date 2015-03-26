@@ -89,26 +89,22 @@ $ make
 $ sudo insmod http_whitelist.ko
 ----
 
-加载模块后，在系统日志中，会如下日志：
+加载模块后，会有如下日志：
 
 ----
 3月 27 00:44:00 archlinux kernel: Loading module "http_whitelist"
 ----
-
-表示加载成功
 
 ==== 卸载模块
 ----
 $ sudo rmmod http_whitelist.ko
 ----
 
-卸载模块后，在系统日志中，会如下日志：
+卸载模块后，会有如下日志：
 
 ----
 3月 27 01:16:15 archlinux kernel: Unloading module "http_whitelist"
 ----
-
-表示卸载成功
 
 == 测试结果说明
 
