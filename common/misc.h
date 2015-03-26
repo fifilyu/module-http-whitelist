@@ -10,22 +10,20 @@
 
 #include <linux/ip.h>
 #include <linux/tcp.h>
-#include <linux/types.h>
-#include <linux/netfilter_ipv4.h>
 
 #define NULL_BYTE_SIZE 1 // '\0'
 
-int read_list(const char* path, char** data, loff_t* len);
+bool read_cfg(const char *path, char ** data, loff_t *size);
 
-bool validate_ipv4_address(const char* ip);
+bool validate_ipv4_address(const char *ip);
 
-void byte_to_binary(int x, char* b);
+void byte_to_binary(int x, char *b);
 
-void tok_str(char** s, char delim);
+void tok_str(char **s, char delim);
 
-int get_line_count(const char* s, loff_t len);
+int get_line_count(const char *s, loff_t size);
 
-unsigned char* get_tcp_data(
+unsigned char *get_tcp_data(
         struct sk_buff *skb, struct iphdr *iph, struct tcphdr *tcph);
 
 #endif /* COMMON_MISC_H_ */

@@ -8,14 +8,16 @@
 #ifndef ISSUE_H_
 #define ISSUE_H_
 
+#include <linux/stddef.h>
+
 // 0 off
 // 1 on
 #define DEBUG 1
 
 #define HTTP_PORT 80
 
-#define WL_DOMAINS  "/etc/http_whitelist/domains"
-#define WL_HOSTS  "/etc/http_whitelist/hosts"
+#define WL_HOST  "/etc/http_whitelist/host"
+#define WL_NETWORK  "/etc/http_whitelist/network"
 
 #define MODOUBLE_NAME "http_whitelist"
 #define LICENSE "Dual MIT/GPL";

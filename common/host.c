@@ -7,139 +7,154 @@
 
 #include "host.h"
 
-#include "file.h"
 #include "../issue.h"
+#include "file.h"
 #include "misc.h"
-#include <asm/segment.h>
-#include <linux/buffer_head.h>
-#include <asm-generic/fcntl.h>
-#include <linux/inet.h>
 
-bool validate_cidr(int cidr) {
-    return (cidr < MIN_CIDR || cidr > MAX_CIDR);
-}
+// 此代码不会修改 tcp_data 指针指向的值
+bool get_http_host(unsigned char *tcp_data, char **host) {
+    static const char    *HEADER_HOST_TITLE_ = "\nHost: ";
+    static size_t        HEADER_HOST_TITLE_SIZE_ = 7;
+    char                 *start_pos_ = NULL;
+    char                 *end_pos_ = NULL;
+    size_t               size_ = 0;
 
-bool tok_ip_cidr(const char* s, char* ip, int* cidr) {
-    static const char* delim_ = "/";
-    char* ip_cidr_ = (char*) kmalloc(strlen(s) + NULL_BYTE_SIZE, GFP_ATOMIC);
-    char* tmp_ = ip_cidr_;
-    char* block_ = NULL;
-    size_t block_len_ = 0;
-    int i_ = 0;
-    bool ret_ = false;
+    // [:端口号] 表示可能会出现
 
-    strcpy(ip_cidr_, s);
+    //    \n
+    //    Host: abc.com[:80]\r\n
+    //    Accept: */*\r\n
+    //    \r\n
+    start_pos_ = strstr(tcp_data, HEADER_HOST_TITLE_);
 
-    // strsep 会将第一个参数指向 NULL，导致内存无法释放。所以，使用临时指针
-    while (NULL != (block_ = strsep(&tmp_, delim_))) {
-        ++i_;
-        block_len_ = strlen(block_);
-
-        if (i_ == 1) {
-            if (validate_ipv4_address(block_) < 0)
-                break;
-
-            strcpy(ip, block_);
-            continue;
-        }
-
-        if (i_ == 2) {
-            sscanf(block_, "%d", &(*cidr));
-            if (validate_cidr(*cidr) == 0)
-                ret_ = true;
-            break;
-        }
-    }  // end of while
-
-    kfree(ip_cidr_);
-    return ret_;
-}
-
-void ip_to_binary(const char* ip, const int cidr, char* bin) {
-    int ip_block_ = 0;
-    size_t i_ = 0;
-    size_t j_ = 0;
-
-    const size_t ip_len_ = strlen(ip);
-    char* ip_ = (char*) kmalloc(ip_len_ + NULL_BYTE_SIZE, GFP_ATOMIC);
-    char* ip_block_str_ = NULL;
-    char bin_ip_block_[4][9];
-
-    strcpy(ip_, ip);
-    tok_str(&ip_, '.');
-
-    for (i_ = 0, j_ = 0; j_ < 4; ++i_, ++j_) {
-        ip_block_str_ = ip_ + i_;
-        sscanf(ip_block_str_, "%d", &ip_block_);
-        byte_to_binary(ip_block_, bin_ip_block_[j_]);
-        i_ += strlen(ip_block_str_);
-    }
-
-    snprintf(
-            bin,
-            cidr + NULL_BYTE_SIZE,
-            "%s%s%s%s",
-            bin_ip_block_[0],
-            bin_ip_block_[1],
-            bin_ip_block_[2],
-            bin_ip_block_[3]);
-
-    kfree(ip_);
-}
-
-bool read_host_cfg(char** data, loff_t* len, size_t* line_count) {
-    if (read_list(WL_HOSTS, data, len) < 0)
+    if (!start_pos_ || strlen(start_pos_) <= HEADER_HOST_TITLE_SIZE_)
         return false;
 
-    tok_str(data, '\n');
-    // 根据 '\0' 确定行数更加准确
-    *line_count = get_line_count(*data, *len);
+    //    \n
+    //    Host: abc.com[:80]
+    if (NULL == (end_pos_ = strchr(start_pos_, '\r')))
+        return false;
 
-    return true;
-}
+    //    abc.com[:80]
+    start_pos_ += strlen(HEADER_HOST_TITLE_);
+    size_ = strlen(start_pos_) - strlen(end_pos_);
 
-bool to_wlist_ip_array(char* cfg, wlist_ip_t* array, size_t array_count) {
-    int i_ = 0;
-    int j_ = 0;
-    char* ip_cidr_ = NULL;
-    wlist_ip_t* wlist_ip_ = NULL;
+    //    abc.com:80 -> abc.com
+    // 处理 Host 值中的端口号 {
 
-    for (i_ = 0, j_ = 0; j_ < array_count; ++i_, ++j_) {
-        ip_cidr_ = cfg + i_;
+    // 如果不复制并设置'\0'，查找端口号的位置会不准确
+    *host = (char*) kmalloc(size_ + NULL_BYTE_SIZE, GFP_ATOMIC);
+    memcpy(*host, start_pos_, size_);
+    (*host)[size_] = '\0';
 
-        wlist_ip_ = &(array[j_]);
-        wlist_ip_->ip[0] = '\0';
-        wlist_ip_->cidr = DEFAULT_CIDR;
-
-        if (!tok_ip_cidr(ip_cidr_, wlist_ip_->ip, &wlist_ip_->cidr)) {
-            pr_err("invaild configuration: \"%s\"\n", ip_cidr_);
-            return false;
-        }
-
-        strcpy(wlist_ip_->ip_cidr, ip_cidr_);
-        ip_to_binary(wlist_ip_->ip, wlist_ip_->cidr, wlist_ip_->cidr_prefix);
-        i_ += strlen(ip_cidr_);
+    if (NULL != (end_pos_ = strchr(*host, ':'))) {
+        // 减去 :80 的长度
+        size_ -= strlen(end_pos_);
+        (*host)[size_] = '\0';
     }
 
+    // }
+
     return true;
 }
 
-bool check_trust_net(
-        const char* request_ip, wlist_ip_t* array, const size_t array_size) {
-    int i_ = 0;
-    wlist_ip_t* wlist_ip_ = NULL;
-    char bin_ip[MAX_CIDR_PREFIX_SIZE + NULL_BYTE_SIZE];
+//    GET / HTTP/1.1\r\n
+//    User-Agent: curl/7.41.0\r\n
+//    Host: abc.com\r\n
+//    Accept: */*\r\n
+//    \r\n
+bool check_http_header(unsigned char *tcp_data) {
+    const size_t data_size_ = strlen(tcp_data);
 
-    for (i_ = 0; i_ < array_size; ++i_) {
-        wlist_ip_ = &(array[i_]);
-        memset(bin_ip, 0, MAX_CIDR_PREFIX_SIZE + NULL_BYTE_SIZE);
-        ip_to_binary(request_ip, wlist_ip_->cidr, bin_ip);
+    if(data_size_ < 8) {
+        if (DEBUG)
+            pr_info("[%s] Not HTTP header, skip...\n", MODOUBLE_NAME);
 
-        if (strcmp(bin_ip, wlist_ip_->cidr_prefix) == 0) {
-            pr_info("%s is part of %s\n", request_ip, wlist_ip_->ip_cidr);
+        return false;
+    }
+
+    if (memcmp(tcp_data, "GET ", 4) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "POST ", 5) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "OPTIONS ", 8) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "HEAD ", 5) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "PUT ", 4) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "DELETE ", 7) == 0) {
+        return true;
+    } else if (memcmp(tcp_data, "CONNECT ", 8) == 0) {
+        return true;
+    }
+
+    if (DEBUG)
+        pr_info("[%s] Not HTTP header, skip...\n", MODOUBLE_NAME);
+
+    return false;
+}
+
+bool cmp_host(char *request_host, char *host) {
+    char            *cut_request_host_ = NULL;
+    const size_t    request_host_size_ = strlen(request_host);
+    const size_t    host_size_ = strlen(host);
+
+    // 普通域名
+    if (request_host_size_ == host_size_
+            && strcmp(host, request_host) == 0)
+        return true;
+
+    // 泛域名
+    if (host[0] == '*' && request_host_size_ >= host_size_ - 1) {
+        // *.abc.com -> .abc.com
+        ++host;
+        // 请求域名长度A - 白名单域名长度B = 域名长度差C
+        // 指向请求域名的char*，向前移动 C，比如 www.abc.com -> .abc.com
+        cut_request_host_ = request_host + (request_host_size_ - (host_size_ - 1));
+
+        if (strcmp(host, cut_request_host_) == 0)
             return true;
-        }
     }
 
     return false;
+}
+
+bool check_host(unsigned char *tcp_data, char *hosts, size_t hosts_size) {
+    bool    ret_ = false;
+    int     i_ = 0;
+    char    *host_ = NULL;
+    char    *request_host_ = NULL;
+
+    if (!get_http_host(tcp_data, &request_host_))
+        return false;
+
+    for (i_ = 0; i_ < hosts_size; ++i_) {
+        host_ = hosts + i_;
+
+        ret_ = cmp_host(request_host_, host_);
+
+        if (ret_) break;
+
+        i_ += strlen(host_);
+    }
+
+    if (DEBUG) {
+        if (ret_)
+            pr_info("[%s] Accept host \"%s\"\n", MODOUBLE_NAME, request_host_);
+        else
+            pr_info("[%s] Drop host \"%s\"\n", MODOUBLE_NAME, request_host_);
+    }
+
+    kfree(request_host_);
+    return ret_;
+}
+
+bool init_host_str(char **data, loff_t* size) {
+    if (!read_cfg(WL_HOST, data, size))
+        return false;
+
+    tok_str(data, '\n');
+
+    return true;
 }

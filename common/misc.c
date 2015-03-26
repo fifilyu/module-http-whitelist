@@ -7,63 +7,60 @@
 
 #include "misc.h"
 
-#include "file.h"
 #include "../issue.h"
-#include <asm/segment.h>
-#include <linux/buffer_head.h>
+#include "file.h"
 #include <asm-generic/fcntl.h>
 #include <linux/inet.h>
 
-int read_list(const char* path, char** data, loff_t* len) {
-    struct file* fp_ = NULL;
-    int ret_ = 0;
+bool read_cfg(const char *path, char **data, loff_t* size) {
+    struct file    *fp_ = NULL;
+    bool           ret_ = false;
 
     fp_ = file_open(path, O_RDONLY, 0);
 
     if (!fp_) {
-        pr_info("[%s] cannot open \"%s\"\n", MODOUBLE_NAME, path);
-        return -1;
+        pr_info("[%s] Cannot open \"%s\"\n", MODOUBLE_NAME, path);
+        return false;
     }
 
-    ret_ = file_read(fp_, data, len);
+    ret_ = file_read(fp_, data, size);
     file_close(fp_);
 
-    if (ret_ < 0) {
-        pr_info("[%s] cannot read \"%s\"\n", MODOUBLE_NAME, path);
-        return -1;
-    }
+    if (!ret_)
+        pr_info("[%s] Cannot read \"%s\"\n", MODOUBLE_NAME, path);
 
-    return 0;
+    return ret_;
 }
 
-bool validate_ipv4_address(const char* ip) {
+bool validate_ipv4_address(const char *ip) {
     __be32 result_;
-    return (in4_pton(ip, strlen(ip), (__u8 *) &result_, '\0', NULL) == 0);
+
+    return (in4_pton(ip, strlen(ip), (__u8 *) &result_, '\0', NULL) == 1);
 }
 
-void byte_to_binary(int x, char* b) {
-    int z;
+void byte_to_binary(int src, char *dest) {
+    int i_;
 
-    b[0] = '\0';
+    dest[0] = '\0';
 
-    for (z = 128; z > 0; z >>= 1)
-        strcat(b, ((x & z) == z) ? "1" : "0");
+    for (i_ = 128; i_ > 0; i_ >>= 1)
+        strcat(dest, ((src & i_) == i_) ? "1" : "0");
 }
 
-void tok_str(char** s, char delim) {
-    size_t i_ = 0;
-    const size_t len_ = strlen(*s);
+void tok_str(char ** s, char delim) {
+    size_t       i_ = 0;
+    const size_t size_ = strlen(*s);
 
-    for (i_ = 0; i_ < len_; ++i_)
+    for (i_ = 0; i_ < size_; ++i_)
         if ((*s)[i_] == delim)
             (*s)[i_] = '\0';
 }
 
-int get_line_count(const char* s, loff_t len) {
-    size_t i_ = 0;
-    int count_ = 0;
+int get_line_count(const char *s, loff_t size) {
+    loff_t    i_ = 0;
+    int       count_ = 0;
 
-    for (i_ = 0; i_ < len; ++i_)
+    for (i_ = 0; i_ < size; ++i_)
         if (s[i_] == '\0')
             ++count_;
 
@@ -71,8 +68,9 @@ int get_line_count(const char* s, loff_t len) {
 }
 
 
-unsigned char* get_tcp_data(
+unsigned char *get_tcp_data(
         struct sk_buff *skb, struct iphdr *iph, struct tcphdr *tcph) {
+    unsigned char *tcp_data_ = NULL;
 
     // How SKBs work
     // http://vger.kernel.org/~davem/skb_data.html
@@ -92,8 +90,7 @@ unsigned char* get_tcp_data(
     //    |    tail   |
     //    |    room   |
     //    |xxxxxxxxxxx|
-    unsigned char* tcp_data_ =
-            (unsigned char*)(skb->data + iph->ihl * 4 + tcph->doff * 4);
+    tcp_data_ = (unsigned char*)(skb->data + iph->ihl * 4 + tcph->doff * 4);
 
     return tcp_data_;
 }

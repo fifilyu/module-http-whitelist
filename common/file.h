@@ -10,12 +10,15 @@
 
 #include <linux/fs.h>
 
-struct file* file_open(const char* path, int flags, int rights);
-void file_close(struct file* f);
+struct file *file_open(const char *path, int flags, int rights);
 
-int file_read(struct file* f, char** data, loff_t* len);
-int file_write(struct file* f, char* data, size_t len);
+void file_close(struct file *f);
+
+bool file_read(struct file *f, char **data, loff_t *size);
+
+bool file_write(struct file *f, char *data, size_t size);
+
 // Write back data and metadata for @file to disk
-int file_sync(struct file* f);
+bool file_sync(struct file *f);
 
 #endif /* COMMON_FILE_H_ */
