@@ -1,3 +1,125 @@
 # module-http-whitelist
+
 基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段，也就是域名白名单
 
+== 使用场景
+需要一个简单的域名防火墙，只有指定的域名或者网络才能访问本机服务端口(默认 80端口)。
+本机*直接提供服务* 或 *作为转发网关* 此模块均可用。
+
+== 端口
+
+默认过滤 80 端口
+
+[NOTE]
+如果 Web 服务端口为 8080，修改源代码中的 `#define HTTP_PORT 80` 为 `#define HTTP_PORT 8080` 即可。
+
+[NOTE]
+端口变化不频繁，所以没考虑写到配置文件。
+
+== 开发以及测试平台
+Arch Linux, 内核版本 3.19.2
+
+[NOTE]
+CentOS 5/6/7 版本在计划之中
+
+== 配置文件
+主机信息将会保存到 `/etc/http_whitelist` 目录下。
+
+==== 初始化配置文件
+----
+$ sudo mkdir /etc/http_whitelist
+$ sudo touch /etc/http_whitelist/host  /etc/http_whitelist/network
+----
+
+==== 域名白名单 /etc/http_whitelist/host
+
+白名单模块会放行
+支持普通域名、无限子域名以及泛域名，每行一个，以回车符分割。
+
+.格式示例
+----
+abc.com
+www.abc.com
+123.456.798.test.abc.com
+123.com
+*.123.com
+----
+
+==== IP 白名单 /etc/http_whitelist/network
+
+白名单模块会忽略在此文件中的单个 IP 地址 或 属于指定网络的 IP 地址，不会过滤任何 HTTP 包。相当于透明直通(不处理数据)。
+支持单 IP 以及 CIDR 风格的网络地址格式，每行一个，以回车符分割。
+
+CIDR 说明:
+http://zh.wikipedia.org/zh/%E6%97%A0%E7%B1%BB%E5%88%AB%E5%9F%9F%E9%97%B4%E8%B7%AF%E7%94%B1[无类别域间路由（Classless Inter-Domain Routing、CIDR）]
+
+.格式示例
+----
+0.0.0.0/0
+1.1.1.1/1
+2.2.2.0/24
+8.8.8.8
+8.8.4.4
+----
+
+0.0.0.0/0 :: 相当于未使用白名单模块，不会过滤来自任何网络的 HTTP 包
+
+[NOTE]
+如果本机作为转发网关，必须添加内网网段，内网网络才能访问公网。
+比如本机 IP 地址为 1.1.1.1，内网网段为 192.168.1.0/24。
+将 192.168.1.0/24 写入 `/etc/http_whitelist/network` 文件，内网网络才能访问公网。
+
+== 编译安装
+
+=== 依赖包
+ArchLinux:: sudo pacman -S linux-headers
+
+=== 编译
+----
+$ git clone https://github.com/fifilyu/module-http-whitelist.git
+$ cd module-http-whitelist
+$ make
+----
+
+=== 安装及卸载
+
+==== 加载模块
+----
+$ sudo insmod http_whitelist.ko
+----
+
+加载模块后，在系统日志中，会如下日志：
+
+----
+3月 27 00:44:00 archlinux kernel: Loading module "http_whitelist"
+----
+
+表示加载成功
+
+==== 卸载模块
+----
+$ sudo rmmod http_whitelist.ko
+----
+
+卸载模块后，在系统日志中，会如下日志：
+
+----
+3月 27 01:16:15 archlinux kernel: Unloading module "http_whitelist"
+----
+
+表示卸载成功
+
+== 测试结果说明
+
+== IP 白名单
+
+. 在此名单中的远程 IP 地址，访问 www.abc.com (*在 域名白名单中*)，将会看到 Web 服务的响应 HTTP 内容
+. 在此名单中的远程 IP 地址，访问 www.xxx.com (*不在 域名白名单中*)，将会看到 Web 服务的响应 HTTP 内容
+. 不在此名单中的远程 IP 地址，访问任何域名，请求都将会被转交给 域名白名单 审核
+
+== 域名白名单
+
+. 在 IP 白名单中的用户（远程 IP 地址）发起的 HTTP 请求，不会出现在此名单中
+. 任意网络位置的用户，访问 www.abc.com (*在 域名白名单中*)，将会看到 Web 服务的响应 HTTP 内容
+. 任意网络位置的用户，访问 www.xxx.com (*不在 域名白名单中*)，不会看到 Web 服务的响应 HTTP 内容，
+只会看到浏览器提示的 “连接被重置” 字样
