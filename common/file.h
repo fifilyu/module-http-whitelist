@@ -18,7 +18,4 @@ bool file_read(struct file *f, char **data, loff_t *size);
 
 bool file_write(struct file *f, char *data, size_t size);
 
-// Write back data and metadata for @file to disk
-bool file_sync(struct file *f);
-
 #endif /* COMMON_FILE_H_ */

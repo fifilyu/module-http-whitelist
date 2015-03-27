@@ -68,8 +68,3 @@ bool file_write(struct file *f, char *data, size_t size) {
 
     return ret_ >= 0;
 }
-
-// Write back data and metadata for @file to disk
-bool file_sync(struct file *f) {
-    return vfs_fsync(f, 0) == 0;
-}
