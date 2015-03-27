@@ -6,6 +6,57 @@
 需要一个简单的域名防火墙，只有指定的域名或者网络才能访问本机服务端口(默认 80端口)。
 本机*直接提供服务* 或 *作为转发网关* 此模块均可用。
 
+== 代替方案
+使用 iptables 的 string 模块，可以实现相同的功能。白名单数量少或 HTTP 流量小时，强烈建议使用此方案。
+
+[NOTE]
+白名单数量增多或 HTTP 流量非常大时，由于 string 模块匹配是在整个包中查找字符串，匹配速度会明显下降。
+
+=== string 模块使用方法
+----
+#1. 创建自定义链
+
+# IP 白名单
+iptables -N whitelist_network
+
+# HTTP 头
+iptables -N http_header
+
+# 域名白名单
+iptables -N whitelist_host
+
+#2. 匹配 IP 白名单匹配
+
+# 访问 TCP 协议 80 端口的包进入 whitelist_network 链
+iptables -A INPUT -p tcp --dport 80 -j whitelist_network
+
+# 放行指定网络的包，不做任何过滤
+iptables -I whitelist_network -p tcp -s 8.8.8.8/24 -j ACCEPT
+
+# 包进入 http_header 链
+iptables -A whitelist_network -p tcp -j http_header
+
+#3. 匹配 HTTP 包
+
+# 匹配包内容里面的 "Host:" 字符串，并进入 whitelist_host 链
+iptables -I http_header -p tcp -m string --string "Host:" --algo bm -j whitelist_host
+
+# 不是 HTTP 包，直接放行
+iptables -A http_header -p tcp -j ACCEPT
+
+#4. 匹配域名白名单匹配
+
+# 匹配 HTTP 头中 "Host: " 之后的字符串，比如 "Host: abc.com"
+iptables -I whitelist_host -p tcp -m string --string "abc.com" --algo bm -j ACCEPT
+iptables -I whitelist_host -p tcp -m string --string "www.abc.com" --algo bm -j ACCEPT
+iptables -I whitelist_host -p tcp -m string --string "123.456.798.test.abc.com" --algo bm -j ACCEPT
+iptables -I whitelist_host -p tcp -m string --string "123.com" --algo bm -j ACCEPT
+iptables -I whitelist_host -p tcp -m string --string ".123.com" --algo bm -j ACCEPT
+
+# 不在域名白名单中的域名，无法访问 80 端口
+iptables -A whitelist_host -p tcp -j DROP
+----
+
 == 端口
 
 默认过滤 80 端口
