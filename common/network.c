@@ -10,6 +10,7 @@
 #include "../issue.h"
 #include "file.h"
 #include "misc.h"
+#include <linux/version.h>  // for LINUX_VERSION_CODE KERNEL_VERSION
 
 bool validate_cidr(int cidr) {
     return (cidr >= MIN_CIDR && cidr <= MAX_CIDR);
@@ -143,7 +144,11 @@ bool check_net(__be32 src_addr, network_t *array, const size_t array_size) {
     char           bin_ip_[MAX_CIDR_PREFIX_SIZE + NULL_BYTE_SIZE];
     char           src_ip_[MAX_IP_SIZE];
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
     sprintf(src_ip_, "%pI4", &src_addr);
+#else
+    sprintf(src_ip_, "%d.%d.%d.%d", NIPQUAD(src_addr));
+#endif
 
     for (i_ = 0; i_ < array_size; ++i_) {
         network_ = &(array[i_]);

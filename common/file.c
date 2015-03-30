@@ -9,6 +9,7 @@
 
 #include <asm/uaccess.h>
 #include <linux/slab.h>
+#include <linux/version.h>  // for LINUX_VERSION_CODE KERNEL_VERSION
 
 struct file *file_open(const char *path, int flags, int rights) {
     struct file      *f_ = NULL;
@@ -36,8 +37,11 @@ bool file_read(struct file *f, char **data, loff_t *size) {
     struct inode     *inode_ = NULL;
     char             *data_ = NULL;
     loff_t           size_ = 0;
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
     inode_ = file_inode(f);
+#else
+    inode_ = f->f_dentry->d_inode;
+#endif
     *size = inode_->i_size;
     size_ = *size;
 

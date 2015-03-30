@@ -11,6 +11,7 @@
 #include "file.h"
 #include <asm-generic/fcntl.h>
 #include <linux/inet.h>
+#include <linux/version.h>  // for LINUX_VERSION_CODE KERNEL_VERSION
 
 bool read_cfg(const char *path, char **data, loff_t* size) {
     struct file    *fp_ = NULL;
@@ -33,9 +34,19 @@ bool read_cfg(const char *path, char **data, loff_t* size) {
 }
 
 bool validate_ipv4_address(const char *ip) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,20)
     __be32 result_;
 
     return (in4_pton(ip, strlen(ip), (__u8 *) &result_, '\0', NULL) == 1);
+#else
+    char           src_ip_[50];
+    __be32 result_ = in_aton(ip);
+    int n = sprintf(src_ip_, "%d.%d.%d.%d", NIPQUAD(result_));
+    src_ip_[strlen(ip)] = '\0';
+    pr_info("result_=%d ip=%s n=%d src_ip_=%s\n", result_, ip, n, src_ip_);
+
+    return strcmp(ip, src_ip_) == 0;
+#endif
 }
 
 void byte_to_binary(int src, char *dest) {

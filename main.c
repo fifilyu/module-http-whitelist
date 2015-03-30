@@ -10,6 +10,10 @@
 #include "common/host.h"
 #include "common/misc.h"
 #include "common/network.h"
+#include <linux/version.h>  // for LINUX_VERSION_CODE KERNEL_VERSION
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0)
+#include <linux/in.h>  // for IPPROTO_TCP
+#endif
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netfilter_ipv4.h>
@@ -24,10 +28,17 @@ static loff_t       g_hosts_size = 0;
 static network_t    *g_net_array = NULL;
 static size_t       g_net_array_size = 0;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,24)
 unsigned int nf_hook_func(
         unsigned int hooknum, struct sk_buff *skb, const struct net_device *in,
         const struct net_device *out, int (*okfn)(struct sk_buff *)) {
     struct sk_buff   *skb_ = skb;
+#else
+unsigned int nf_hook_func(
+        unsigned int hooknum, struct sk_buff **skb, const struct net_device *in,
+        const struct net_device *out, int (*okfn)(struct sk_buff *)) {
+    struct sk_buff   *skb_ = *skb;
+#endif
     struct iphdr     *ip_header_ = NULL;
     struct tcphdr    *tcp_header_ = NULL;
     unsigned char    *tcp_data_ = NULL;
@@ -35,13 +46,21 @@ unsigned int nf_hook_func(
     if (!skb_)
         return NF_ACCEPT;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
     ip_header_ = ip_hdr(skb_);
+#else
+    ip_header_ = skb_->h.ipiph;
+#endif
 
     // 仅仅过滤 TCP 协议
     if (!ip_header_ || ip_header_->protocol != IPPROTO_TCP)
         return NF_ACCEPT;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
     tcp_header_ = tcp_hdr(skb_);
+#else
+    tcp_header_ = (struct tcphdr *)((__u32 *)ip_header_ + ip_header_->ihl);
+#endif
 
     // 仅仅过滤指定的 HTTP 端口
     if (htons(tcp_header_->dest) != HTTP_PORT)
@@ -72,7 +91,11 @@ unsigned int nf_hook_func(
 
 static struct nf_hook_ops g_nf_hook = {
         .hook = (nf_hookfn*) nf_hook_func,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
         .hooknum = NF_INET_PRE_ROUTING,
+#else
+        .hooknum = NF_IP_PRE_ROUTING,
+#endif
         .pf = PF_INET,
         .priority = NF_IP_PRI_FIRST
 };
