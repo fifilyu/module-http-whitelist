@@ -56,11 +56,14 @@ unsigned int nf_hook_func(
     if (!ip_header_ || ip_header_->protocol != IPPROTO_TCP)
         return NF_ACCEPT;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
-    tcp_header_ = tcp_hdr(skb_);
-#else
+    // 已知在 2.6.18/3.19.2 上，tcp_hdr(skb_) 会返回预期的 tcp 头偏移量。
+    // 已知在 2.6.32 上，tcp_hdr(skb_) 与 ip_hdr(skb_) 会返回相同的指针地址。
+    //
+    // 2.6.32:
+    // TCP 包来自 1/2 层，netfilter/ipv4 钩子会在第 3 层被注入。
+    // 因此，此时使用 tcp_hdr 函数不会获得预期的 tcp 头偏移量。
+    // 直接根据 IP 头偏移量计算 TCP 头偏移量是最合适的
     tcp_header_ = (struct tcphdr *)((__u32 *)ip_header_ + ip_header_->ihl);
-#endif
 
     // 仅仅过滤指定的 HTTP 端口
     if (htons(tcp_header_->dest) != HTTP_PORT)
