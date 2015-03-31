@@ -91,7 +91,7 @@ unsigned int nf_hook_func(
 
 static struct nf_hook_ops g_nf_hook = {
         .hook = (nf_hookfn*) nf_hook_func,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,25)
         .hooknum = NF_INET_PRE_ROUTING,
 #else
         .hooknum = NF_IP_PRE_ROUTING,
