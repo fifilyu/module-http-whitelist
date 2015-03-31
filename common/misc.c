@@ -41,7 +41,7 @@ bool validate_ipv4_address(const char *ip) {
 #else
     char           src_ip_[50];
     __be32 result_ = in_aton(ip);
-    int n = sprintf(src_ip_, "%d.%d.%d.%d", NIPQUAD(result_));
+    sprintf(src_ip_, "%d.%d.%d.%d", NIPQUAD(result_));
     src_ip_[strlen(ip)] = '\0';
 
     return strcmp(ip, src_ip_) == 0;
