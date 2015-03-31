@@ -127,7 +127,8 @@ http://zh.wikipedia.org/zh/%E6%97%A0%E7%B1%BB%E5%88%AB%E5%9F%9F%E9%97%B4%E8%B7%A
 == 编译安装
 
 === 依赖包
-ArchLinux:: sudo pacman -S linux-headers
+CentOS 5/6/7:: sudo yum install kernel-devel
+Arch Linux:: sudo pacman -S linux-headers
 
 === 编译
 ----
