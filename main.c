@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netfilter_ipv4.h>
+#include <linux/bug.h>
 
 MODULE_LICENSE(LICENSE);
 MODULE_AUTHOR(AUTHOR);
@@ -101,6 +102,11 @@ static struct nf_hook_ops g_nf_hook = {
 };
 
 int init_module() {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)
+    pr_err("[%s] Linux Kernel Version does not supported.\n", MODOUBLE_NAME);
+    return -1;
+#endif
+
     pr_info("Loading module \"%s\"\n", MODOUBLE_NAME);
 
     if (!init_host_str(&g_hosts, &g_hosts_size)) {
