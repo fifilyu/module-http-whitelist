@@ -17,7 +17,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netfilter_ipv4.h>
-#include <linux/bug.h>
 
 MODULE_LICENSE(LICENSE);
 MODULE_AUTHOR(AUTHOR);
