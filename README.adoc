@@ -67,11 +67,14 @@ iptables -A whitelist_host -p tcp -j DROP
 [NOTE]
 端口变化不频繁，所以没考虑写到配置文件。
 
-== 开发以及测试平台
-Arch Linux, 内核版本 3.19.2
+== 支持内核版本
+2.6.18 及以上版本
 
-[NOTE]
-CentOS 5/6/7 版本在计划之中
+== 开发以及测试平台
+CentOS 5, 内核版本 2.6.18
+CentOS 6, 内核版本 2.6.32
+CentOS 7, 内核版本 3.10.0
+Arch Linux, 内核版本 3.19.2
 
 == 配置文件
 主机信息将会保存到 `/etc/http_whitelist` 目录下。
