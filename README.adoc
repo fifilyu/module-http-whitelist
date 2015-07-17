@@ -75,6 +75,7 @@ iptables -A whitelist_host -p tcp -j DROP
 * CentOS 6, 内核版本 2.6.32
 * CentOS 7, 内核版本 3.10.0
 * Arch Linux, 内核版本 3.19.2
+* Debian 7, 内核版本 3.16.0
 
 == 配置文件
 主机信息将会保存到 `/etc/http_whitelist` 目录下。
@@ -129,6 +130,7 @@ http://zh.wikipedia.org/zh/%E6%97%A0%E7%B1%BB%E5%88%AB%E5%9F%9F%E9%97%B4%E8%B7%A
 === 依赖包
 CentOS 5/6/7:: sudo yum install kernel-devel
 Arch Linux:: sudo pacman -S linux-headers
+Debian 7:: sudo apt-get install linux-headers-`uname -r`
 
 === 编译
 ----
