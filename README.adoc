@@ -130,7 +130,7 @@ http://zh.wikipedia.org/zh/%E6%97%A0%E7%B1%BB%E5%88%AB%E5%9F%9F%E9%97%B4%E8%B7%A
 === 依赖包
 CentOS 5/6/7:: sudo yum install kernel-devel
 Arch Linux:: sudo pacman -S linux-headers
-Debian 7:: sudo apt-get install linux-headers-`uname -r`
+Debian 7:: sudo apt-get install linux-headers-\`uname -r`
 
 === 编译
 ----
