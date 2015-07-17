@@ -1,6 +1,6 @@
 # module-http-whitelist
 
-基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段，也就是域名白名单
+域名白名单内核模块，基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段
 
 == 使用场景
 需要一个简单的域名防火墙，只有指定的域名或者网络才能访问本机服务端口(默认 80端口)。
