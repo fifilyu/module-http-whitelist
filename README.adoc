@@ -54,7 +54,7 @@ iptables -I whitelist_host -p tcp -m string --string "123.com" --algo bm -j ACCE
 iptables -I whitelist_host -p tcp -m string --string ".123.com" --algo bm -j ACCEPT
 
 # 不在域名白名单中的域名，无法访问 80 端口
-iptables -A whitelist_host -p tcp -j DROP
+iptables -A whitelist_host -p tcp -j REJECT --reject-with tcp-reset
 ----
 
 == 端口
