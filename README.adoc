@@ -1,10 +1,10 @@
 # module-http-whitelist
 
-基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段，也就是域名白名单
+域名白名单内核模块，基于 Linux Netfilter 过滤 HTTP 协议中的 Host 字段
 
 == 使用场景
 需要一个简单的域名防火墙，只有指定的域名或者网络才能访问本机服务端口(默认 80端口)。
-本机*直接提供服务* 或 *作为转发网关* 此模块均可用。
+本机 *直接提供服务* 或 *作为转发网关* 此模块均可用。
 
 == 代替方案
 使用 iptables 的 string 模块，可以实现相同的功能。白名单数量少或 HTTP 流量小时，强烈建议使用此方案。
@@ -54,7 +54,7 @@ iptables -I whitelist_host -p tcp -m string --string "123.com" --algo bm -j ACCE
 iptables -I whitelist_host -p tcp -m string --string ".123.com" --algo bm -j ACCEPT
 
 # 不在域名白名单中的域名，无法访问 80 端口
-iptables -A whitelist_host -p tcp -j DROP
+iptables -A whitelist_host -p tcp -j REJECT --reject-with tcp-reset
 ----
 
 == 端口
@@ -75,6 +75,7 @@ iptables -A whitelist_host -p tcp -j DROP
 * CentOS 6, 内核版本 2.6.32
 * CentOS 7, 内核版本 3.10.0
 * Arch Linux, 内核版本 3.19.2
+* Debian 7, 内核版本 3.16.0
 
 == 配置文件
 主机信息将会保存到 `/etc/http_whitelist` 目录下。
@@ -129,6 +130,7 @@ http://zh.wikipedia.org/zh/%E6%97%A0%E7%B1%BB%E5%88%AB%E5%9F%9F%E9%97%B4%E8%B7%A
 === 依赖包
 CentOS 5/6/7:: sudo yum install kernel-devel
 Arch Linux:: sudo pacman -S linux-headers
+Debian 7:: sudo apt-get install linux-headers-\`uname -r`
 
 === 编译
 ----
