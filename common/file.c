@@ -50,7 +50,7 @@ bool file_read(struct file *f, char **data, loff_t *size) {
 
     oldfs_ = get_fs();
     set_fs(get_ds());
-    ret_ = f->f_op->read(f, data_, size_, &f->f_pos);
+    ret_ = vfs_read(f, data_, size_, &f->f_pos);
     set_fs(oldfs_);
 
     if (ret_ < 0)
