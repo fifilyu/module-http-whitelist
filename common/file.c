@@ -67,7 +67,7 @@ bool file_write(struct file *f, char *data, size_t size) {
 
     oldfs_ = get_fs();
     set_fs(get_ds());
-    ret_ = f->f_op->write(f, data, size, &f->f_pos);
+    ret_ = vfs_write(f, data, size, &f->f_pos);
     set_fs(oldfs_);
 
     return ret_ >= 0;
