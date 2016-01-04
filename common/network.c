@@ -123,6 +123,10 @@ bool init_net_array(network_t **array, size_t *array_size) {
         network_ = &((*array)[j_]);
         network_->ip[0] = '\0';
 
+        // 跳过空行
+        if (strlen(ip_cidr_) == 0)
+            continue;
+
         if (!tok_ip_cidr(ip_cidr_, network_->ip, &network_->cidr)) {
             pr_info("[%s] Invaild configuration: \"%s\"\n", MODOUBLE_NAME, ip_cidr_);
             kfree(host_cfg_);
